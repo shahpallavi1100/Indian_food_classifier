@@ -249,14 +249,17 @@ st.markdown(BASE_CSS, unsafe_allow_html=True)
 # ---------------- Floating Round Button (calls hidden checkbox click) ----------------
 # The button triggers JS to click the hidden Streamlit checkbox.
 # When clicked, Streamlit will receive the change and rerun (so session_state updates).
-floating_html = textwrap.dedent("""
-<div class="float-toggle-btn" onclick="(function(){
-  const cb = document.querySelector('input[id^="theme_bool"]');
+# FIX: Use f-string instead of .format() to avoid JavaScript brace conflicts
+icon_display = "🌙" if st.session_state.theme == "dark" else "🌞"
+
+floating_html = f"""
+<div class="float-toggle-btn" onclick="(function(){{
+  const cb = document.querySelector('input[id^=\\"theme_bool\\"]');
   if(cb) cb.click();
-})();" title="Toggle theme (sun / moon)">
-  <div class="icon">{icon}</div>
+}})();" title="Toggle theme (sun / moon)">
+  <div class="icon">{icon_display}</div>
 </div>
-""").format(icon=("🌙" if st.session_state.theme == "dark" else "🌞"))
+"""
 
 st.markdown(floating_html, unsafe_allow_html=True)
 
@@ -392,7 +395,7 @@ elif menu == "🥗 Calorie Calculator":
         query = st.text_input("Search for food:", "")
     with col_reset:
         if st.button("Reset"):
-            st.experimental_rerun()
+            st.rerun()
 
     matches = [k for k in sorted(NUTRITION_DB.keys()) if query.lower() in k.lower()]
     total = 0
