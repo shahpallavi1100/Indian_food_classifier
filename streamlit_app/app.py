@@ -122,16 +122,23 @@ MACRO_COLORS = {"Protein":"#2ECC71", "Carbs":"#3498DB", "Fat":"#E67E22", "Fiber"
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
 
+# Create a unique key for this session to force checkbox detection
+if "checkbox_key" not in st.session_state:
+    st.session_state.checkbox_key = 0
+
 # Render a hidden checkbox (Streamlit) that we toggle with the floating button.
-# Keeping Streamlit checkbox ensures state and rerun work properly.
-col_main, col_toggle = st.columns([9,1])
-with col_toggle:
-    theme_checked = st.checkbox("", value=(st.session_state.theme == "dark"), key="theme_bool", help="Toggle theme (hidden control)")
+theme_checked = st.checkbox(
+    "", 
+    value=(st.session_state.theme == "dark"), 
+    key=f"theme_bool_{st.session_state.checkbox_key}",
+    label_visibility="hidden"
+)
+
 # update session state
 st.session_state.theme = "dark" if theme_checked else "light"
 
 # ---------------- Prepare CSS values ----------------
-bg_color = "var(--dark-bg)" if st.session_state.theme == "dark" else "var(--light-bg)"
+bg_color = "#0f1113" if st.session_state.theme == "dark" else "#f7f7f7"
 text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#111111"
 muted_color = "#b9bdc2" if st.session_state.theme == "dark" else "#666666"
 pred_card_bg = "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))" if st.session_state.theme == "dark" else "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01))"
@@ -139,8 +146,12 @@ accent = "#F4D03F"
 toggle_bg = "linear-gradient(135deg,#ffd27a,#f4d03f)" if st.session_state.theme == "dark" else "#FFFFFF"
 toggle_color = "#111111"
 
-# ---------------- Global CSS (use .format with doubled braces in CSS) ----------------
-BASE_CSS = textwrap.dedent("""
+# File uploader button colors
+upload_btn_bg = "#F4D03F" if st.session_state.theme == "dark" else "#0066cc"
+upload_btn_text = "#111111" if st.session_state.theme == "dark" else "#ffffff"
+
+# ---------------- Global CSS ----------------
+BASE_CSS = f"""
 <style>
 :root {{
   --dark-bg: #0f1113;
@@ -155,9 +166,9 @@ BASE_CSS = textwrap.dedent("""
   --light-muted: #666666;
 }}
 
-/* Streamlit wrapper override (keeps Cloud + local consistent) */
+/* Streamlit wrapper override */
 html, body, .main, .block-container {{
-    background: var(--dark-bg) !important;
+    background: {bg_color} !important;
     color: {text_color} !important;
 }}
 
@@ -168,6 +179,33 @@ html, body, .main, .block-container {{
     transition: background 300ms ease, color 300ms ease;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     padding: 12px 18px;
+}}
+
+/* CRITICAL FIX: File uploader button styling */
+[data-testid="stFileUploader"] {{
+    background: transparent;
+}}
+
+[data-testid="stFileUploader"] button {{
+    background: {upload_btn_bg} !important;
+    color: {upload_btn_text} !important;
+    border: 2px solid {upload_btn_bg} !important;
+    border-radius: 10px !important;
+    padding: 10px 24px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}}
+
+[data-testid="stFileUploader"] button:hover {{
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3) !important;
+}}
+
+/* Drag and drop area */
+[data-testid="stFileUploader"] section {{
+    border: 2px dashed {muted_color} !important;
+    border-radius: 12px !important;
+    background: {bg_color} !important;
 }}
 
 /* header */
@@ -192,13 +230,22 @@ h1,h2,h3,h4 {{ margin:6px 0; }}
 /* footer */
 .footer {{ text-align:center; color:gray; padding-top:22px; font-size:14px; }}
 
-/* ---- Toggle hidden (we use floating button to toggle) ---- */
-div[data-testid="stCheckbox"] {{ display:inline-block; opacity:0; height:0; width:0; margin:0; padding:0; }}
+/* Hide the checkbox completely */
+[data-testid="stCheckbox"] {{
+    display: none !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+}}
 
 /* Floating round toggle button */
 .float-toggle-btn {{
   position: fixed;
-  top: 18px;
+  top: 70px;
   right: 18px;
   width: 56px;
   height: 56px;
@@ -211,14 +258,21 @@ div[data-testid="stCheckbox"] {{ display:inline-block; opacity:0; height:0; widt
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease, background .25s ease;
   z-index: 9999;
-  border: 2px solid rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.08);
 }}
-.float-toggle-btn:hover {{ transform: translateY(-6px) scale(1.03); box-shadow: 0 18px 40px rgba(0,0,0,0.45); }}
+.float-toggle-btn:hover {{ 
+    transform: translateY(-6px) scale(1.03); 
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45); 
+}}
+.float-toggle-btn:active {{
+    transform: translateY(-2px) scale(0.98);
+}}
 
 /* inner icon */
 .float-toggle-btn .icon {{
   font-size:22px;
   transition: transform .28s ease;
+  user-select: none;
 }}
 .float-toggle-btn:hover .icon {{ transform: rotate(-12deg) scale(1.08); }}
 
@@ -234,60 +288,77 @@ div[data-testid="stCheckbox"] {{ display:inline-block; opacity:0; height:0; widt
 /* utility */
 .center {{ text-align:center; }}
 </style>
-""").format(
-    accent=accent,
-    text_color=text_color,
-    bg_color=bg_color,
-    muted_color=muted_color,
-    pred_card_bg=pred_card_bg,
-    toggle_bg=toggle_bg,
-    toggle_color=toggle_color
-)
+"""
 
 st.markdown(BASE_CSS, unsafe_allow_html=True)
 
-# ---------------- Floating Round Button (calls hidden checkbox click) ----------------
-# The button triggers JS to click the hidden Streamlit checkbox.
-# When clicked, Streamlit will receive the change and rerun (so session_state updates).
-# FIX: Use f-string instead of .format() to avoid JavaScript brace conflicts
+# ---------------- Floating Round Button (IMPROVED) ----------------
 icon_display = "🌙" if st.session_state.theme == "dark" else "🌞"
 
+# JavaScript to find and click the checkbox reliably
 floating_html = f"""
-<div class="float-toggle-btn" onclick="(function(){{
-  const cb = document.querySelector('input[id^=\\"theme_bool\\"]');
-  if(cb) cb.click();
-}})();" title="Toggle theme (sun / moon)">
+<div class="float-toggle-btn" onclick="toggleTheme()" title="Toggle theme (sun / moon)">
   <div class="icon">{icon_display}</div>
 </div>
+
+<script>
+function toggleTheme() {{
+    // Find the checkbox by searching all checkboxes
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    
+    // Look for our theme checkbox (it should be the first one or match our key pattern)
+    for (let cb of checkboxes) {{
+        const id = cb.id || '';
+        if (id.includes('theme_bool')) {{
+            cb.click();
+            return;
+        }}
+    }}
+    
+    // Fallback: click the first checkbox if theme checkbox not found by ID
+    if (checkboxes.length > 0) {{
+        checkboxes[0].click();
+    }}
+}}
+
+// Also add keyboard shortcut (Ctrl+Shift+T)
+document.addEventListener('keydown', function(e) {{
+    if (e.ctrlKey && e.shiftKey && e.key === 'T') {{
+        toggleTheme();
+    }}
+}});
+</script>
 """
 
 st.markdown(floating_html, unsafe_allow_html=True)
 
 # ---------------- Header ----------------
-st.markdown(textwrap.dedent(f"""
+header_color = '#F4D03F' if st.session_state.theme == 'dark' else '#b8872b'
+
+st.markdown(f"""
 <div style="display:flex; justify-content:space-between; align-items:center;">
   <div>
-    <h1 style="color: {'#F4D03F' if st.session_state.theme=='dark' else '#b8872b'}; margin:0;">🍽️ Indian Food Recognition & Nutrition Analyzer</h1>
+    <h1 style="color: {header_color}; margin:0;">🍽️ Indian Food Recognition & Nutrition Analyzer</h1>
     <p class="small-muted" style="margin:4px 0 10px 0;">Upload a food image → Predict the dish → View advanced nutrition visuals</p>
   </div>
   <div style="text-align:right;">
-    <div style="font-size:13px; color: {muted_color};">Theme</div>
+    <div style="font-size:13px; color: {muted_color};">Theme: {st.session_state.theme.title()}</div>
   </div>
 </div>
 <hr style="border-color: rgba(255,255,255,0.04); margin-top:8px;">
-"""), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ---------------- Sidebar Menu ----------------
 menu = st.sidebar.radio("Select Feature", ["🔍 Food Recognition", "🥗 Calorie Calculator", "⚖️ Food Comparison"])
 
 # ================== PAGE: FOOD RECOGNITION ==================
 if menu == "🔍 Food Recognition":
-    st.markdown(textwrap.dedent(f"""
+    st.markdown(f"""
     <div style="text-align:center;">
-      <h2 style="margin-bottom:6px; color: {'#F4D03F' if st.session_state.theme=='dark' else '#b8872b'};">📤 Upload a Food Image</h2>
+      <h2 style="margin-bottom:6px; color: {header_color};">📤 Upload a Food Image</h2>
       <p class="small-muted">Supported formats: JPG, JPEG, PNG</p>
     </div>
-    """), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("", type=["jpg","jpeg","png"], key="food_upload_main")
 
@@ -302,16 +373,16 @@ if menu == "🔍 Food Recognition":
 
         with right:
             with st.spinner("Analyzing image… 🔍"):
-                # predict_image should raise a human-friendly error if the model is missing
                 dish, confidence, nutrition = predict_image(img)
 
-            st.markdown(textwrap.dedent(f"""
+            dish_color = "#fff" if st.session_state.theme == 'dark' else "#111"
+            st.markdown(f"""
             <div class="pred-card">
-              <h3 style="margin:0; color:#FADBD8;">🍽️ Predicted Dish: <b style='color:{"#fff" if st.session_state.theme=='dark' else "#111"}'>{dish}</b></h3>
+              <h3 style="margin:0; color:#FADBD8;">🍽️ Predicted Dish: <b style='color:{dish_color}'>{dish}</b></h3>
               <p style="margin:6px 0 0 0; font-size:15px; color:#F5B7B1;">🔥 Confidence: <b>{confidence*100:.2f}%</b></p>
               <p class="small-muted" style="margin-top:8px;">Tip: Scroll to see nutrition, macro charts and animated bars</p>
             </div>
-            """), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
             # health tag
             if nutrition:
@@ -331,7 +402,6 @@ if menu == "🔍 Food Recognition":
             per100 = nutrition["per100g"]
             ps = nutrition["per_serving"]
 
-            # left: nutrition card
             st.markdown(safe_nutrition_card(per100, ps, st.session_state.theme), unsafe_allow_html=True)
 
             # macro slices
@@ -345,16 +415,17 @@ if menu == "🔍 Food Recognition":
             f_pct = int(round((f/total)*100))
             fi_pct = int(round((fi/total)*100))
 
-            # Chart area: combine 4 donuts horizontally (rendered via components.html)
+            rest_color = "rgba(255,255,255,0.06)" if st.session_state.theme == 'dark' else "rgba(0,0,0,0.06)"
+
             charts_html = "<div style='display:flex; gap:16px; flex-wrap:wrap; align-items:center; justify-content:center;'>"
-            charts_html += chartjs_donut_html([p_pct, 100-p_pct], ["Protein","rest"], [MACRO_COLORS["Protein"], ("rgba(255,255,255,0.06)" if st.session_state.theme=='dark' else "rgba(0,0,0,0.06)")], "Protein", st.session_state.theme)
-            charts_html += chartjs_donut_html([c_pct, 100-c_pct], ["Carbs","rest"], [MACRO_COLORS["Carbs"], ("rgba(255,255,255,0.06)" if st.session_state.theme=='dark' else "rgba(0,0,0,0.06)")], "Carbs", st.session_state.theme)
-            charts_html += chartjs_donut_html([f_pct, 100-f_pct], ["Fat","rest"], [MACRO_COLORS["Fat"], ("rgba(255,255,255,0.06)" if st.session_state.theme=='dark' else "rgba(0,0,0,0.06)")], "Fat", st.session_state.theme)
-            charts_html += chartjs_donut_html([fi_pct, 100-fi_pct], ["Fiber","rest"], [MACRO_COLORS["Fiber"], ("rgba(255,255,255,0.06)" if st.session_state.theme=='dark' else "rgba(0,0,0,0.06)")], "Fiber", st.session_state.theme)
+            charts_html += chartjs_donut_html([p_pct, 100-p_pct], ["Protein","rest"], [MACRO_COLORS["Protein"], rest_color], "Protein", st.session_state.theme)
+            charts_html += chartjs_donut_html([c_pct, 100-c_pct], ["Carbs","rest"], [MACRO_COLORS["Carbs"], rest_color], "Carbs", st.session_state.theme)
+            charts_html += chartjs_donut_html([f_pct, 100-f_pct], ["Fat","rest"], [MACRO_COLORS["Fat"], rest_color], "Fat", st.session_state.theme)
+            charts_html += chartjs_donut_html([fi_pct, 100-fi_pct], ["Fiber","rest"], [MACRO_COLORS["Fiber"], rest_color], "Fiber", st.session_state.theme)
             charts_html += "</div>"
             st_html(charts_html, height=340)
 
-            # Macro bars (animated)
+            # Macro bars
             bars_html = "<div style='width:95%; max-width:980px; margin:18px auto 6px auto;'>"
             bars_html += macro_bar_html(p, MACRO_COLORS["Protein"], "Protein", max_cap=50, theme=st.session_state.theme)
             bars_html += "<div style='height:10px;'></div>"
@@ -365,11 +436,9 @@ if menu == "🔍 Food Recognition":
             bars_html += macro_bar_html(fi, MACRO_COLORS["Fiber"], "Fiber", max_cap=30, theme=st.session_state.theme)
             bars_html += "</div>"
 
-            # animation script: ensure bar fills animate after rendering
-            bars_html += textwrap.dedent("""
+            bars_html += """
             <script>
             (function(){
-              // Add small timeout to trigger transitions
               setTimeout(()=> {
                 const fills = document.querySelectorAll('.fill');
                 fills.forEach((el) => {
@@ -380,7 +449,7 @@ if menu == "🔍 Food Recognition":
               }, 80);
             })();
             </script>
-            """)
+            """
             st_html(bars_html, height=300)
 
     else:
@@ -433,7 +502,7 @@ elif menu == "⚖️ Food Comparison":
         B = NUTRITION_DB[f2]["per100g"]
         colA, colB = st.columns(2)
         with colA:
-            st.markdown(textwrap.dedent(f"""
+            st.markdown(f"""
             <div class='comp-box' style='background:#E8F8F5; padding:18px; border-radius:12px;'>
                 <h4 style='margin-top:0'>{f1} (Per 100g)</h4>
                 <b>Calories:</b> {A['calories']} kcal<br>
@@ -442,9 +511,9 @@ elif menu == "⚖️ Food Comparison":
                 <b>Fat:</b> {A['fat']} g<br>
                 <b>Fiber:</b> {A['fiber']} g<br>
             </div>
-            """), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         with colB:
-            st.markdown(textwrap.dedent(f"""
+            st.markdown(f"""
             <div class='comp-box' style='background:#FEF5E7; padding:18px; border-radius:12px;'>
                 <h4 style='margin-top:0'>{f2} (Per 100g)</h4>
                 <b>Calories:</b> {B['calories']} kcal<br>
@@ -453,11 +522,11 @@ elif menu == "⚖️ Food Comparison":
                 <b>Fat:</b> {B['fat']} g<br>
                 <b>Fiber:</b> {B['fiber']} g<br>
             </div>
-            """), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
 # ---------------- Footer ----------------
-st.markdown(textwrap.dedent("""
+st.markdown("""
 <br><br>
 <hr>
-<p class='footer'>Created with ❤️ by <b>Pallavi</b> </p>
-"""), unsafe_allow_html=True)
+<p class='footer'>Created with ❤️ by <b>Pallavi</b> | Press Ctrl+Shift+T to toggle theme</p>
+""", unsafe_allow_html=True)
