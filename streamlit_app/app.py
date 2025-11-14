@@ -132,11 +132,13 @@ st.session_state.theme = "dark" if theme_checked else "light"
 # ---------------- Prepare CSS values ----------------
 bg_color = "var(--dark-bg)" if st.session_state.theme == "dark" else "var(--light-bg)"
 text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#111111"
+
 muted_color = "#b9bdc2" if st.session_state.theme == "dark" else "#666666"
 pred_card_bg = "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))" if st.session_state.theme == "dark" else "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01))"
 accent = "#F4D03F"
 
 # ---------------- Global CSS (escape braces correctly) ----------------
+
 BASE_CSS = f"""
 <style>
 :root {{
