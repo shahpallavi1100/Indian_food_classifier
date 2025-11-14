@@ -10,11 +10,6 @@ env/
 .venv/
 ENV/
 
-# --- Model files (keep only if needed) ---
-*.pt
-*.pth
-*.h5
-
 # If you want to upload your model to GitHub, remove the above lines.
 
 # --- IDE / OS files ---
