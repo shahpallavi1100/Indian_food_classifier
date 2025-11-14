@@ -16,6 +16,7 @@ from src.nutrition import NUTRITION_DB
 
 # ---------------- Config ----------------
 st.set_page_config(page_title="Indian Food Classifier", layout="wide", page_icon="🍽️")
+
 # ---------------- Helpers ----------------
 def safe_nutrition_card(per100: dict, ps: dict, theme: str) -> str:
     card_bg = "#FFEED6" if theme == "dark" else "#ffffff"
@@ -46,7 +47,7 @@ def safe_nutrition_card(per100: dict, ps: dict, theme: str) -> str:
 
 def chartjs_donut_html(values, labels, colors, title, theme):
     """
-    Build isolated Chart.js donut snippet. Use .format to avoid f-string brace confusion.
+    Build isolated Chart.js donut snippet using .format to avoid brace problems.
     """
     canvas_id = "c_" + uuid.uuid4().hex[:8]
     data_vals = ",".join(str(v) for v in values)
@@ -132,14 +133,14 @@ st.session_state.theme = "dark" if theme_checked else "light"
 # ---------------- Prepare CSS values ----------------
 bg_color = "var(--dark-bg)" if st.session_state.theme == "dark" else "var(--light-bg)"
 text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#111111"
-
 muted_color = "#b9bdc2" if st.session_state.theme == "dark" else "#666666"
 pred_card_bg = "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))" if st.session_state.theme == "dark" else "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01))"
 accent = "#F4D03F"
+toggle_bg = "linear-gradient(135deg,#ffd27a,#f4d03f)" if st.session_state.theme == "dark" else "#FFFFFF"
+toggle_color = "#111111"
 
-# ---------------- Global CSS (escape braces correctly) ----------------
-
-BASE_CSS = f"""
+# ---------------- Global CSS (use .format with doubled braces in CSS) ----------------
+BASE_CSS = textwrap.dedent("""
 <style>
 :root {{
   --dark-bg: #0f1113;
@@ -152,6 +153,12 @@ BASE_CSS = f"""
   --light-bg: #f7f7f7;
   --light-panel: #ffffff;
   --light-muted: #666666;
+}}
+
+/* Streamlit wrapper override (keeps Cloud + local consistent) */
+html, body, .main, .block-container {{
+    background: var(--dark-bg) !important;
+    color: {text_color} !important;
 }}
 
 /* app background + font */
@@ -188,6 +195,7 @@ h1,h2,h3,h4 {{ margin:6px 0; }}
 /* ---- Toggle hidden (we use floating button to toggle) ---- */
 div[data-testid="stCheckbox"] {{ display:inline-block; opacity:0; height:0; width:0; margin:0; padding:0; }}
 
+/* Floating round toggle button */
 .float-toggle-btn {{
   position: fixed;
   top: 18px;
@@ -195,8 +203,8 @@ div[data-testid="stCheckbox"] {{ display:inline-block; opacity:0; height:0; widt
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: {('linear-gradient(135deg,#ffd27a,#f4d03f)' if st.session_state.theme=='dark' else '#FFF')};
-  color: {('#111' if st.session_state.theme=='dark' else '#111')};
+  background: {toggle_bg};
+  color: {toggle_color};
   display: grid;
   place-items: center;
   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
@@ -226,21 +234,30 @@ div[data-testid="stCheckbox"] {{ display:inline-block; opacity:0; height:0; widt
 /* utility */
 .center {{ text-align:center; }}
 </style>
-"""
+""").format(
+    accent=accent,
+    text_color=text_color,
+    bg_color=bg_color,
+    muted_color=muted_color,
+    pred_card_bg=pred_card_bg,
+    toggle_bg=toggle_bg,
+    toggle_color=toggle_color
+)
 
 st.markdown(BASE_CSS, unsafe_allow_html=True)
 
 # ---------------- Floating Round Button (calls hidden checkbox click) ----------------
 # The button triggers JS to click the hidden Streamlit checkbox.
 # When clicked, Streamlit will receive the change and rerun (so session_state updates).
-floating_html = textwrap.dedent(f"""
-<div class="float-toggle-btn" onclick="(function(){{
-  const cb = document.querySelector('input[id^=\"theme_bool\"]');
+floating_html = textwrap.dedent("""
+<div class="float-toggle-btn" onclick="(function(){
+  const cb = document.querySelector('input[id^="theme_bool"]');
   if(cb) cb.click();
-}})();">
-  <div class="icon">{"🌙" if st.session_state.theme=="dark" else "🌞"}</div>
+})();" title="Toggle theme (sun / moon)">
+  <div class="icon">{icon}</div>
 </div>
-""")
+""").format(icon=("🌙" if st.session_state.theme == "dark" else "🌞"))
+
 st.markdown(floating_html, unsafe_allow_html=True)
 
 # ---------------- Header ----------------
@@ -282,6 +299,7 @@ if menu == "🔍 Food Recognition":
 
         with right:
             with st.spinner("Analyzing image… 🔍"):
+                # predict_image should raise a human-friendly error if the model is missing
                 dish, confidence, nutrition = predict_image(img)
 
             st.markdown(textwrap.dedent(f"""
