@@ -15,7 +15,7 @@ from src.predict import predict_image
 from src.nutrition import NUTRITION_DB
 
 # ---------------- Config ----------------
-st.set_page_config(page_title="Indian Food Classifier", layout="wide", page_icon="🍽️")
+st.set_page_config(page_title="Indian Food Classifier", layout="wide", page_icon="🍽️Meal Nutrition Detection")
 
 # ---------------- Helpers ----------------
 def safe_nutrition_card(per100: dict, ps: dict, theme: str) -> str:
@@ -338,7 +338,7 @@ header_color = '#F4D03F' if st.session_state.theme == 'dark' else '#b8872b'
 st.markdown(f"""
 <div style="display:flex; justify-content:space-between; align-items:center;">
   <div>
-    <h1 style="color: {header_color}; margin:0;">🍽️ Indian Food Recognition & Nutrition Analyzer</h1>
+    <h1 style="color: {header_color}; margin:0;">🍽️ Meal Nutrition Detection</h1>
     <p class="small-muted" style="margin:4px 0 10px 0;">Upload a food image → Predict the dish → View advanced nutrition visuals</p>
   </div>
   <div style="text-align:right;">
@@ -528,5 +528,5 @@ elif menu == "⚖️ Food Comparison":
 st.markdown("""
 <br><br>
 <hr>
-<p class='footer'>Created with ❤️ by <b>Pallavi</b> | Press Ctrl+Shift+T to toggle theme</p>
+<p class='footer'>| Press Ctrl+Shift+T to toggle theme</p>
 """, unsafe_allow_html=True)
